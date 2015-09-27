@@ -1,0 +1,85 @@
+---
+title: "Machine"
+author: "TT"
+date: "28 September 2015"
+output: html_document
+---
+
+## Management Summary
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+Steps are taken:
+
+1., Load the data
+
+2., Clean the data, removing NAs, etc.. The number of columns are reduced to 60 from 160
+
+3., Create training and test datasets
+
+4., Create Rpart Model
+
+5., Create Random Forest Model
+
+6., Select Model based on accuracy. Random forest model has more than 99.9% accuracy while Rpart has 66% accuracy
+
+7., The Out-of-Sample Error Rate for Random forest near 0
+
+
+## Analysis
+```{r, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+knitr::opts_chunk$set(message=FALSE)
+```
+
+```{r}
+library(caret)
+library(rpart)
+library(randomForest)
+
+## Load Data
+setwd("C:/Users/HP/Documents/Tibi/R/Machine_Learning")
+trainRaw <- read.csv("./data/trainData.csv", header = TRUE, sep = ",", na.strings = c("NA", "#DIV/0!", ""))
+testRaw <- read.csv("./data/testData.csv", header = TRUE, sep = ",", na.strings = c("NA", "#DIV/0!", ""))
+
+##Clean Data Set
+trainClean <- trainRaw[,colSums(is.na(trainRaw))<(nrow(trainRaw)*0.9)]
+testClean <- testRaw[,colSums(is.na(trainRaw))<(nrow(trainRaw)*0.9)]
+
+##Create Subsets 
+set.seed(33833)
+inTrain = createDataPartition(trainClean$classe, p = .60)[[1]]
+trainingsubset = trainClean[ inTrain,]
+testingsubset = trainClean[-inTrain,]
+
+##Create Rpart Model
+modFit<-train(classe~.,method="rpart", data=trainingsubset)
+
+varImp(modFit)
+classepredict=predict(modFit,testingsubset)
+confusionMatrix(testingsubset$classe,classepredict)
+
+##Create Random Forest Model
+modFit2 <- train(classe ~ ., method="rf",trControl=trainControl(method = "cv", number = 4), data=trainingsubset)
+
+varImp(modFit2)
+classepredict2=predict(modFit2,testingsubset)
+confusionMatrix(testingsubset$classe,classepredict2)
+
+##Model Selection
+
+##Count the Model Accuracy
+modelaccuracy <- postResample(testingsubset$classe, predict(modFit, testingsubset[,-60]))[[1]]
+modelaccuracy
+
+modelaccuracy2 <- postResample(testingsubset$classe, predict(modFit2, testingsubset[,-60]))[[1]]
+modelaccuracy2
+
+
+##Count the Out-of-Sample Error Rate
+outOfSampleError <- 1 - modelaccuracy2
+outOfSampleError
+```
+
+## Reference
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har
